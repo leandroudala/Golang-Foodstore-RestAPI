@@ -36,6 +36,7 @@ type errorParam interface {
 
 func throwError(w http.ResponseWriter, err errorParam) {
 	r := db.Status{400, err.Error()}
+	w.WriteHeader(400)
 	log.Println(r.Message)
 	json.NewEncoder(w).Encode(r)
 }
@@ -98,11 +99,11 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 
 		json.NewEncoder(w).Encode(product)
 	} else {
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound) // 404
 	}
 }
 
-// Create inserts a new record to product's table
+// Create a new record to product's table
 func Create(w http.ResponseWriter, r *http.Request) {
 	// preparing data
 	var product Product
@@ -137,10 +138,11 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		throwError(w, err)
 	}
 	product.ID = uint(id)
+	w.WriteHeader(http.StatusCreated) // 201
 	json.NewEncoder(w).Encode(product)
 }
 
-// Update updates product
+// Update a product
 func Update(w http.ResponseWriter, r *http.Request) {
 	// preparing data
 	var product Product
@@ -167,5 +169,37 @@ func Update(w http.ResponseWriter, r *http.Request) {
 		throwError(w, err)
 	} else {
 		json.NewEncoder(w).Encode(product)
+	}
+}
+
+// Delete a product
+func Delete(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id, err := strconv.Atoi(params["id"])
+
+	conn := db.GetConn()
+	tx, err := conn.Begin()
+	if err != nil {
+		throwError(w, err)
+	}
+
+	stmt, err := tx.Prepare("delete from product where id = ?")
+	if err != nil {
+		throwError(w, err)
+	}
+	defer stmt.Close()
+
+	result, err := stmt.Exec(id)
+
+	if err != nil {
+		throwError(w, err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	tx.Commit()
+	if rowsAffected > 0 {
+		w.WriteHeader(http.StatusOK) // 200
+	} else {
+		w.WriteHeader(http.StatusNotFound) // 404
 	}
 }
