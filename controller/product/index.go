@@ -82,6 +82,7 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		throwError(w, err)
 	}
+	defer stmt.Close()
 	rows, err := stmt.Query(id)
 	if err != nil {
 		throwError(w, err)
@@ -137,4 +138,34 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	}
 	product.ID = uint(id)
 	json.NewEncoder(w).Encode(product)
+}
+
+// Update updates product
+func Update(w http.ResponseWriter, r *http.Request) {
+	// preparing data
+	var product Product
+	err := json.NewDecoder(r.Body).Decode(&product)
+	if err != nil {
+		throwError(w, err)
+	}
+
+	conn := db.GetConn()
+	tx, err := conn.Begin()
+	if err != nil {
+		throwError(w, err)
+	}
+
+	stmt, err := tx.Prepare("update product set name = ?, description = ?, price = ? where id = ?")
+	if err != nil {
+		throwError(w, err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(product.Name, product.Description, product.Price, product.ID)
+	tx.Commit()
+	if err != nil {
+		throwError(w, err)
+	} else {
+		json.NewEncoder(w).Encode(product)
+	}
 }

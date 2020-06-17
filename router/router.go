@@ -10,5 +10,6 @@ import (
 func GetRoutes(r *mux.Router) {
 	r.HandleFunc("/product", product.Create).Methods("Post")
 	r.HandleFunc("/product/{id}", product.GetProduct).Methods("Get")
+	r.HandleFunc("/product/{id}", product.Update).Methods("Put")
 	r.HandleFunc("/products", product.GetProducts).Methods("Get")
 }
