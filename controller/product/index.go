@@ -57,13 +57,13 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(params["id"])
 
-	product, err := service.GetProduct(id)
+	product, err := service.GetProduct(&id)
 
 	if err != nil {
 		throwError(w, err)
 	}
 	if product.ID == 0 {
-		w.WriteHeader(http.StatusNotFound)	// 404
+		w.WriteHeader(http.StatusNotFound)	// 404 Not Found
 	}
 
 	json.NewEncoder(w).Encode(product)
@@ -71,40 +71,13 @@ func GetProduct(w http.ResponseWriter, r *http.Request) {
 
 // Create a new record to product's table
 func Create(w http.ResponseWriter, r *http.Request) {
-	// preparing data
-	var product model.Product
-	err := json.NewDecoder(r.Body).Decode(&product)
-	if err != nil {
-		log.Println(err)
-	}
-
-	conn := db.GetConn()
-	defer conn.Close()
-
-	tx, err := conn.Begin()
-	if err != nil {
-		log.Println("Error when inserting:", err.Error())
-		return
-	}
-	stmt, err := tx.Prepare("insert into product (name, description, price, image) values (?, ?, ?, ?)")
-	if err != nil {
-		throwError(w, err)
-	}
-	defer stmt.Close()
-
-	res, err := stmt.Exec(product.Name, product.Description, product.Price)
+	product, err := service.Create(r.Body)
 
 	if err != nil {
 		throwError(w, err)
 	}
-	tx.Commit()
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		throwError(w, err)
-	}
-	product.ID = uint(id)
-	w.WriteHeader(http.StatusCreated) // 201
+	w.WriteHeader(http.StatusCreated) // 201 Created
 	json.NewEncoder(w).Encode(product)
 }
 

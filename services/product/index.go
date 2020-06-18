@@ -1,6 +1,9 @@
 package services
 
 import (
+	"io"
+	"encoding/json"
+
 	"leandroudala/foodstore/db"
 	model "leandroudala/foodstore/models/product"
 )
@@ -38,7 +41,7 @@ type errorParam struct {
 }
 
 // GetProduct returns a specific product by id
-func GetProduct(id int) (model.Product, error) {
+func GetProduct(id *int) (*model.Product, error) {
 	var product model.Product
 
 	conn := db.GetConn()
@@ -46,18 +49,18 @@ func GetProduct(id int) (model.Product, error) {
 
 	tx, err := conn.Begin()
 	if err != nil {
-		return product, err
+		return nil, err
 	}
 
 	stmt, err := tx.Prepare("select id, name, description, price from product where id = ?")
 	if err != nil {
-		return product, err
+		return &product, err
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.Query(id)
 	if err != nil {
-		return product, err
+		return &product, err
 	}
 	defer rows.Close()
 
@@ -65,9 +68,48 @@ func GetProduct(id int) (model.Product, error) {
 	if rows.Next() {
 		err = rows.Scan(&product.ID, &product.Name, &product.Description, &product.Price)
 		if err != nil {
-			return product, err
+			return &product, err
 		}		
 	}
 
-	return product, nil
+	return &product, nil
+}
+
+
+// Create a new record to product's table
+func Create(body io.ReadCloser) (*model.Product, error) {
+	var product model.Product
+	err := json.NewDecoder(body).Decode(&product)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := db.GetConn()
+	defer conn.Close()
+
+	tx, err := conn.Begin()
+	if err != nil {
+		return nil, err
+	}
+	stmt, err := tx.Prepare("insert into product (name, description, price, image) values (?, ?, ?, ?)")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	res, err := stmt.Exec(product.Name, product.Description, product.Price, product.Image)
+
+	if err != nil {
+		return nil, err
+	}
+	tx.Commit()
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	product.ID = uint(id)
+	
+	return &product, nil
 }
