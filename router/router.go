@@ -14,4 +14,6 @@ func GetRoutes(r *mux.Router) {
 	r.HandleFunc("/product/{id}", product.Delete).Methods("Delete")
 
 	r.HandleFunc("/products", product.GetProducts).Methods("Get")
+
+	r.HandleFunc("/product/upload", product.Upload).Methods("Post")
 }

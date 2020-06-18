@@ -87,3 +87,23 @@ func checkTable(tableName string) bool {
 
 	return true
 }
+
+// ExecQuery executes a SQL Query passed by command line
+// Example:
+// 		./foodstore -sql="SELECT * FROM products"
+func ExecQuery(query string) {
+	// get DB Connection
+	conn := GetConn()
+	defer conn.Close()
+	log.Println("Running SQL Query:\n", query)
+
+	result, err := conn.Exec(query)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	// get updates
+	lastID, _ := result.LastInsertId()
+	affectedRows, _ := result.RowsAffected()
+	log.Println("Last inserted id:", lastID,"\t\tRows affecteds:", affectedRows)
+}
