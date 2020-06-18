@@ -77,7 +77,7 @@ func GetProduct(id *int) (*model.Product, error) {
 
 
 // Create a new record to product's table
-func Create(body io.ReadCloser) (*model.Product, error) {
+func Create(body io.Reader) (*model.Product, error) {
 	var product model.Product
 	err := json.NewDecoder(body).Decode(&product)
 	if err != nil {
@@ -112,4 +112,35 @@ func Create(body io.ReadCloser) (*model.Product, error) {
 	product.ID = uint(id)
 	
 	return &product, nil
+}
+
+
+// Update a product
+func Update(body io.Reader) (*model.Product, error) {
+	// preparing data
+	var product model.Product
+	err := json.NewDecoder(body).Decode(&product)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := db.GetConn()
+	tx, err := conn.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	stmt, err := tx.Prepare("update product set name = ?, description = ?, price = ? where id = ?")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(product.Name, product.Description, product.Price, product.ID)
+	tx.Commit()
+	if err != nil {
+		return nil, err
+	} else {
+		return &product, nil
+	}
 }
